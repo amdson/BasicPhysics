@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<link rel="stylesheet" href="BondCSS.css">
+	</head>
+	<body>
+
+		<h1 style="color:red;" >Bouncy Bonds</h1>
+		<p>
+			<input onclick="startstop()" type="button" value="Start" id="myButton1" />
+			<input onclick="shiftMode()" type="button" value="Create" id="ModeStatus" />
+			<input onclick="reset()" type="button" value="Reset" id="ApocalypseButton" />
+		</p>
+
+		<canvas id="myCanvas" width="800" height="500" onmousemove="findMouse(event)"  
+			> </canvas>
+		<h3 id = "MakeshiftConsole">Let's see</h3>
+		<h3 id = "MakeshiftConsole2">Let's see</h3>
+		<h3 id = "MouseCoords"> (0, 0) </h3>
+		<h3 id = "MouseDown"> Mouse is up </h3>
+		<h3 id = "CreateModeStatus"> Creator's Block Active </h3>
+		<h3 id = "ArrowStatus"> Jack </h3>
+		<script> 
+		class Node {
+			constructor(mass, xpos, ypos) {
+				this.mass = mass;
+				this.xpos = xpos;
+				this.ypos = ypos;
+				this.xvel = 0;
+				this.yvel = 0;
+				this.nextxvel = 0;
+				this.nextyvel = 0;
+				this.connected = [];
+			}
+		}
+		
+		var running = false;
+		var iterator;
+		
+		var c = document.getElementById("myCanvas");
+		c.addEventListener("mousedown", mouseDown, false);
+		c.addEventListener("mouseup", mouseUp, false);
+		var ctx = c.getContext("2d");
+		ctx.strokeStyle = "#000000";
+		var rect = c.getBoundingClientRect();
+		
+		var nodes = [new Node(10, 440, 250), new Node(10, 500, 250), new Node(10, 470, 210)];
+		var selected = [];
+		var controllable = [];
+		var controllable2 = [];
+		nodes[0].connected[0] = [1, 60];
+		nodes[1].connected[0] = [0, 60];
+		nodes[0].connected[1] = [2, 60];
+		nodes[1].connected[1] = [2, 60];
+		nodes[2].connected[0] = [0, 60];
+		nodes[2].connected[1] = [1, 60];
+		var mouseX = 50;
+		var mouseY = 50;
+		var mousedown = false;
+		var mode = 0;
+		var up = false, right = false, down = false, left = false;
+		var w = false, d = false, s = false, a = false;
+
+		function shiftMode()
+		{
+			mode = (mode + 1) % 4;
+			if(mode === 0)
+			{	
+				document.getElementById("ModeStatus").value = "Create";
+			}
+			if(mode === 1)
+			{
+				document.getElementById("ModeStatus").value = "Connect";
+			}
+			if(mode === 2)
+			{
+				document.getElementById("ModeStatus").value = "SelectA";
+			}
+			if(mode === 3)
+			{
+				document.getElementById("ModeStatus").value = "SelectB";
+			}
+		}
+		
+		function findMouse(e)
+		{
+			mouseX = e.clientX - rect.left;
+			mouseY = e.clientY - rect.top; 
+			//document.getElementById("MouseCoords").innerHTML = "("+mouseX+", "+mouseY+")";
+		}
+		
+		function mouseDown()
+		{
+			mousedown = true; 
+			document.getElementById("MouseDown").innerHTML = "Mouse is down. Repeat. Mouse is down.";
+			if(!running)
+			{
+				if(mode === 0)
+				{
+					var neoNode = new Node(10, mouseX, mouseY);
+					nodes.push(neoNode);
+					redraw();
+					
+				}
+				
+				if(mode === 1)
+				{
+					var minsqaredist = 100;
+					var selectedindex = selected.length;
+					for(var i = 0; i < nodes.length; i++)
+					{
+						if(selected.length === 0 || selected[0] != i)
+						{
+							var xdist = nodes[i].xpos-mouseX;
+							var ydist = nodes[i].ypos-mouseY;
+						
+							if(xdist*xdist+ydist*ydist < minsqaredist)
+							{
+								selected[selectedindex] = i;
+								minsquaredist = xdist*xdist+ydist*ydist;
+							}
+						}
+					}
+					if(selected.length === 2)
+					{
+						connect(selected[0], selected[1])
+						selected = [];
+						selectedindex = 0;
+					}
+					redraw();
+				}
+				
+				if(mode === 2)
+				{
+					var minsqaredist = 100;
+					var chosen = -1;
+					var exiting = false;
+					for(var i = 0; i < nodes.length; i++)
+					{
+						
+						var xdist = nodes[i].xpos-mouseX;
+						var ydist = nodes[i].ypos-mouseY;
+						
+						if(xdist*xdist+ydist*ydist < minsqaredist)
+						{
+							chosen = i;
+							minsquaredist = xdist*xdist+ydist*ydist;
+						}
+						
+					}
+					if(chosen > -1)
+					{
+						for(var i = 0; i < controllable.length; i++)
+						{
+							if(chosen === controllable[i])
+							{
+								controllable.splice(i, 1);
+								exiting = true;
+								break;
+							}
+						}
+						if(!exiting) {controllable[controllable.length] = chosen;}
+					}
+					
+					redraw();
+				}
+				
+				if(mode === 3)
+				{
+					var minsqaredist = 100;
+					var chosen = -1;
+					var exiting = false;
+					for(var i = 0; i < nodes.length; i++)
+					{
+						
+						var xdist = nodes[i].xpos-mouseX;
+						var ydist = nodes[i].ypos-mouseY;
+						
+						if(xdist*xdist+ydist*ydist < minsqaredist)
+						{
+							chosen = i;
+							minsquaredist = xdist*xdist+ydist*ydist;
+						}
+						
+					}
+					if(chosen > -1)
+					{
+						for(var i = 0; i < controllable2.length; i++)
+						{
+							if(chosen === controllable2[i])
+							{
+								controllable2.splice(i, 1);
+								exiting = true;
+								break;
+							}
+						}
+						if(!exiting) {controllable2[controllable2.length] = chosen;}
+					}
+					
+					redraw();
+				}
+			}	
+		}
+		
+		function mouseUp()
+		{
+			mousedown = false;
+			document.getElementById("MouseDown").innerHTML = "Mouse is up.";
+		}
+		
+		document.onkeydown = function (e) {
+			e = e || window.event;
+			 var event = window.event ? window.event : e;
+			 if (event.keyCode == '38') {
+				// up arrow
+				up = true;
+				document.getElementById("ArrowStatus").innerHTML = "Up";
+				}
+			else if (event.keyCode == '40') {
+				// down arrow
+				down = true;
+				document.getElementById("ArrowStatus").innerHTML = "Down";
+			}
+			else if (event.keyCode == '37') {
+				// left arrow
+				left = true;
+				document.getElementById("ArrowStatus").innerHTML = "Left";
+			}
+			else if (event.keyCode == '39') {
+				// right arrow
+				right = true;
+				document.getElementById("ArrowStatus").innerHTML = "Right";
+			}
+			
+			else if (event.keyCode == '87') {
+				// w
+				w = true;
+				document.getElementById("ArrowStatus").innerHTML = "Up";
+				}
+			else if (event.keyCode == '83') {
+				// s
+				s = true;
+				document.getElementById("ArrowStatus").innerHTML = "Down";
+			}
+			else if (event.keyCode == '65') {
+				// a
+				a = true;
+				document.getElementById("ArrowStatus").innerHTML = "Left";
+			}
+			else if (event.keyCode == '68') {
+				// d
+				d = true;
+				document.getElementById("ArrowStatus").innerHTML = "Right";
+			}
+			
+		};
+		document.onkeyup = function (e) {
+			e = e || window.event;
+			 if (e.keyCode == '38') {
+				// up arrow
+				up = false;
+				document.getElementById("ArrowStatus").innerHTML = "Jack";
+				}
+			else if (e.keyCode == '40') {
+				// down arrow
+				down = false;
+				document.getElementById("ArrowStatus").innerHTML = "Jack";
+			}
+			else if (e.keyCode == '37') {
+				// left arrow
+				left = false;
+				document.getElementById("ArrowStatus").innerHTML = "Jack";
+			}
+			else if (e.keyCode == '39') {
+				// right arrow
+				right = false;
+				document.getElementById("ArrowStatus").innerHTML = "Jack";
+			}
+			else if (event.keyCode == '87') {
+				// w
+				w = false;
+				
+				}
+			else if (event.keyCode == '83') {
+				// s
+				s = false;
+				
+			}
+			else if (event.keyCode == '65') {
+				// a
+				a = false;
+				
+			}
+			else if (event.keyCode == '68') {
+				// d
+				d = false;
+				
+			}
+		};
+		
+		//Manage whether the update event is being called
+		function startstop()
+		{
+			running = !running;
+			if(running){
+				iterator = setInterval(update, 40);
+				document.getElementById("myButton1").value = "Stop";
+			}
+			else{
+				clearInterval(iterator);
+				document.getElementById("myButton1").value = "Start";
+			}	
+		}
+		
+		//Create a frame of animation
+		function redraw()
+		{
+			//Clear canvas
+			ctx.clearRect(0,0,c.width,c.height);
+			//Draw nodes and the connections between them
+			ctx.strokeStyle = "brown";
+			for(var n = 0; n < nodes.length; n++)
+			{
+				for(var k = 0; k < nodes[n].connected.length; k++)
+				{
+					var c2node = nodes[ nodes[n].connected[k][0] ];
+					ctx.beginPath();
+					ctx.moveTo(nodes[n].xpos,nodes[n].ypos);
+					ctx.lineTo(c2node.xpos, c2node.ypos);
+					ctx.stroke();
+				}
+				
+				
+				ctx.beginPath();
+				ctx.arc(nodes[n].xpos, nodes[n].ypos, 10,0,2*Math.PI);
+				ctx.stroke();
+				document.getElementById("MakeshiftConsole2").innerHTML = "("+n+")";
+			}
+			
+			//Draw outline around selected nodes
+			ctx.strokeStyle="red";
+			for(var i = 0; i < selected.length; i++)
+			{
+				ctx.beginPath();
+				ctx.arc(nodes[selected[i]].xpos, nodes[selected[i]].ypos, 12,0,2*Math.PI);
+				ctx.stroke();
+			}
+			
+			ctx.strokeStyle = "orange";
+			for(var i = 0; i < controllable.length; i++)
+			{
+				ctx.beginPath();
+				ctx.arc(nodes[controllable[i]].xpos, nodes[controllable[i]].ypos, 12,0,2*Math.PI);
+				ctx.stroke();
+			}
+			
+			ctx.strokeStyle = "blue";
+			for(var i = 0; i < controllable2.length; i++)
+			{
+				ctx.beginPath();
+				ctx.arc(nodes[controllable2[i]].xpos, nodes[controllable2[i]].ypos, 12,0,2*Math.PI);
+				ctx.stroke();
+			}
+			
+		}
+		
+		//handle all the physics
+		function update(){
+			document.getElementById("MouseCoords").innerHTML = "("+mouseX+", "+mouseY+")";
+			
+			var xforce = 0;
+			var yforce = 0;
+			var sxvel = 0;
+			var syvel = 0;
+			var cxpos = 0;
+			var cypos = 0;
+			var cxvel = 0;
+			var cyvel = 0;
+			var xdist = 0;
+			var ydist = 0;
+			var distance = 0;
+			var delta = 0;
+			
+			var xdist2 = 0
+			var ydist2 = 0;
+			var distance2 = 0; 
+			
+			for(var i =0; i< nodes.length; i++)
+			{
+				nodes[i].nextxvel = nodes[i].xvel;
+				nodes[i].nextyvel = nodes[i].yvel;
+			}
+			
+			//Add force to selected nodes
+			for(var j = 0; j < controllable.length; j++)
+			{
+				if(up)
+				{nodes[controllable[j]].nextyvel -= 0.5}
+				if(down)
+				{nodes[controllable[j]].nextyvel += 0.5}
+				if(right)
+				{nodes[controllable[j]].nextxvel += 0.5}
+				if(left)
+				{nodes[controllable[j]].nextxvel -= 0.5}
+			}
+			
+			for(var j = 0; j < controllable2.length; j++)
+			{
+				if(w)
+				{nodes[controllable2[j]].nextyvel -= 0.5}
+				if(s)
+				{nodes[controllable2[j]].nextyvel += 0.5}
+				if(d)
+				{nodes[controllable2[j]].nextxvel += 0.5}
+				if(a)
+				{nodes[controllable2[j]].nextxvel -= 0.5}
+			}
+			
+			
+			
+			for(var i = 0; i < nodes.length; i++)
+			{
+				xforce = 0;
+				yforce = 0;
+				
+				
+				//Calculate forces on nodes from springs
+				for(var j = 0; j < nodes[i].connected.length; j++)
+				{
+					var cnode = nodes[ nodes[i].connected[j][0] ];
+					cxpos = cnode.xpos;
+					cypos = cnode.ypos;
+					xdist = cxpos-nodes[i].xpos;
+					ydist = cypos-nodes[i].ypos;
+					distance = Math.sqrt((xdist)*(xdist)+
+					(ydist)*(ydist));
+					delta = distance - nodes[i].connected[j][1];
+
+					xforce += (delta*xdist/distance)/5;
+					yforce += (delta*ydist/distance)/5;
+					
+					//Calculate and subtract relative velocities for friction
+					sxvel = nodes[i].xvel;
+					syvel = nodes[i].yvel;
+					cxvel = cnode.xvel;
+					cyvel = cnode.yvel;
+					//var xtax = (sxvel+syvel+xdist+ydist+distance+cxvel+cyvel)/500;
+					//var ytax = 0;
+					
+					var xtax = (sxvel*xdist+syvel*ydist)/(distance*distance)*xdist-
+								(cxvel*xdist+cyvel*ydist)/(distance*distance)*xdist;
+								
+					var ytax = (sxvel*xdist+syvel*ydist)/(distance*distance)*ydist-
+								(cxvel*xdist+cyvel*ydist)/(distance*distance)*ydist;
+						
+					nodes[i].nextxvel -= (0.06*xtax);
+					nodes[i].nextyvel -= (0.06*ytax/* - 0.05*/);
+				}
+				
+				
+				
+				
+				//Add force from mousedown to nodes
+				xdist2 = 0
+				ydist2 = 0;
+				distance2 = 0; 
+				if(mousedown)
+				{
+					document.getElementById("MakeshiftConsole").innerHTML = "Mouse pulls inexorably";
+					
+					xdist2 = mouseX-nodes[i].xpos;
+					ydist2 = mouseY-nodes[i].ypos;
+					distance2 = Math.sqrt((xdist2)*(xdist2)+
+					(ydist2)*(ydist2));
+					
+					xforce += (xdist2)/distance2;
+					yforce += (ydist2)/distance2;
+				}
+				else
+				{	
+					document.getElementById("MakeshiftConsole").innerHTML = "Mouse doesn't do much.";
+				}
+				
+				//Update next velocity from forces
+				nodes[i].nextxvel += xforce;
+				nodes[i].nextyvel += yforce;
+				
+				//Bounce nodes which are hitting the edges of canvas
+				if(nodes[i].xpos <15 || nodes[i].xpos > 785)
+				{
+					nodes[i].nextxvel = 0;
+					if(nodes[i].xpos <15)
+					{nodes[i].xpos = 16;}
+					else{nodes[i].xpos = 784;}
+				}
+				if(nodes[i].ypos <15 || nodes[i].ypos > 485)
+				{
+					nodes[i].nextyvel = 0;
+					if(nodes[i].ypos <15)
+					{nodes[i].ypos = 16;}
+					else{nodes[i].ypos = 484;}
+				}
+				//nodes[i].xvel *= 0.99;
+				//nodes[i].yvel *= 0.99;
+			}
+			
+			//Update positions from velocities
+			for(var n = 0; n < nodes.length; n++)
+			{
+				nodes[n].xvel = nodes[n].nextxvel;
+				nodes[n].yvel = nodes[n].nextyvel;
+				nodes[n].xpos += nodes[n].xvel;
+				nodes[n].ypos += nodes[n].yvel;
+			}
+			redraw();
+		}
+
+		//connect two nodes
+		function connect(index1, index2)
+		{
+			var xpos1 = nodes[index1].xpos;
+			var ypos1 = nodes[index1].ypos;
+			var xpos2 = nodes[index2].xpos;
+			var ypos2 = nodes[index2].ypos;
+			
+			var xdist = xpos1-xpos2;
+			var ydist = ypos1-ypos2;
+			var distance = Math.sqrt((xdist)*(xdist)+
+				(ydist)*(ydist));
+			nodes[index1].connected.push([index2, distance]);
+			nodes[index2].connected.push([index1, distance]);
+		}
+		
+		//Delete everything, clear the canvas
+		function reset()
+		{
+			nodes = [];
+			selected = [];
+			controllable = [];
+			redraw();
+		}
+		
+		</script>
+
+	</body>
+</html>
